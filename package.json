@@ -1,0 +1,26 @@
+{
+  "name": "suriyayatra",
+  "version": "0.1.0",
+  "description": "Thai suriyayatra (สุริยยาตร์) calculations: the Thai lunar calendar, Chula Sakarat year arithmetic and Buddhist holy days. Zero dependencies.",
+  "keywords": ["thai", "calendar", "lunar", "suriyayatra", "สุริยยาตร์", "จันทรคติ", "วันพระ", "astrology", "horakhun"],
+  "license": "MIT",
+  "author": "Lucifer-911GT",
+  "repository": { "type": "git", "url": "git+https://github.com/Lucifer-911GT/suriyayatra.git" },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist", "README.md", "SOURCES.md", "LICENSE"],
+  "sideEffects": false,
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^3.2.0"
+  }
+}
