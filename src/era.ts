@@ -59,3 +59,12 @@ export function eraYear(cs: number): EraYear {
     thaloengSokJdn: horakhun + HORAKHUN_JDN,
   };
 }
+
+/**
+ * Clock time of เถลิงศก: the 800 − กัมมัชพล units already gone that day, at 108 seconds each.
+ * Returns seconds after midnight. It reproduces the Royal Court's announced times
+ * (2567: 02:15:00, 2568: 08:27:36, 2569: 14:40:12).
+ */
+export function thaloengSokSeconds(cs: number): number {
+  return (KAMMACAPHON_PER_DAY - eraYear(cs).kammacaphon) * 108;
+}

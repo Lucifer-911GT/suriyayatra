@@ -178,3 +178,16 @@ export function fromThaiLunar(d: { cs: number; month: number; secondEighth?: boo
   }
   throw new RangeError(`lunar year ${d.cs} has no month ${d.month}${d.secondEighth ? ' (second)' : ''}`);
 }
+
+/** ชวด (rat) … กุน (pig). */
+export const YEAR_ANIMALS_TH = ['ชวด', 'ฉลู', 'ขาล', 'เถาะ', 'มะโรง', 'มะเส็ง', 'มะเมีย', 'มะแม', 'วอก', 'ระกา', 'จอ', 'กุน'] as const;
+
+/**
+ * Year animal (ปีนักษัตร) by the Thai lunar year: it changes at ขึ้น 1 ค่ำ เดือน 5,
+ * not at เถลิงศก nor at the Chinese New Year. Returns 0 = ชวด … 11 = กุน.
+ */
+export function yearAnimal(input: Date | YMD): { index: number; th: string; cs: number } {
+  const { cs } = toThaiLunar(input);
+  const index = (cs + 10) % 12;
+  return { index, th: YEAR_ANIMALS_TH[index], cs };
+}
