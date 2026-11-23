@@ -41,6 +41,10 @@ signChanges({ year: 2026, month: 11, day: 17 }).map((c) => [c.body, clock(c.minu
 ingresses(['rahu', 'jupiter'], { year: 2026, month: 11, day: 1 }, { year: 2027, month: 12, day: 31 });
 // [{ body: 'rahu', at: { jdn, minute: 305 }, from: 10, to: 9 }, …] — 05:05 น. = 05:23 น. เวลาประเทศไทย
 
+// ช่วงดาวพักร์
+retrogrades('venus', { year: 2026, month: 1, day: 1 }, { year: 2026, month: 12, day: 31 });
+// [{ body: 'venus', start: { year: 2026, month: 10, day: 13 }, end: { …, day: 24 }, days: 42 }]
+
 position(ascendant({ at: fromThaiTime({ year: 1984, month: 11, day: 15 }, 11, 30) })).signTh; // ลัคนา
 birthWeekday({ year: 2026, month: 11, day: 18 }, 19, 0).dayTh; // "พุธกลางคืน"
 ```
@@ -77,6 +81,7 @@ birthWeekday({ year: 2026, month: 11, day: 18 }, 19, 0).dayTh; // "พุธก�
 7. **ดาวเคราะห์** มัธยมจาก S (อังคาร S/2 + 16S/505, พฤหัสบดี S/12 + S/1032, เสาร์ S/30 + 6S/10000, มฤตยู S/84 + S/7224, พุธ 4S + 7S/46, ศุกร์ 5S/3 − 10S/243 บวกค่าตั้ง) แล้วแก้สองครั้งด้วยฉายา 0, 244, 427, 488 ทุก 30° ครั้งแรกเทียบอุจจ์ (มนทโจจ์) ครั้งที่สองเทียบอาทิตย์ สำหรับพุธและศุกร์ แก้อาทิตย์ก่อนแล้วเทียบมัธยมของดาว
 8. **เวลาย้ายราศี** ไล่ทีละนาทีตั้งแต่ 00:00–24:00 น. เวลาที่ได้คือนาทีแรกที่อยู่ในราศีใหม่ (แบบเดียวกับปฏิทินโหราศาสตร์)
 9. **การกระพริบข้ามขอบราศี (อนุวักระ)** สูตรจำนวนเต็มทำให้ดาวเดินช้าข้ามขอบราศีไปกลับได้หลายครั้งในเวลาไม่กี่ชั่วโมง `signChanges` รายวันแสดงทุกครั้งตามจริง ส่วน `ingresses` ตัดคู่ที่ย้อนกลับภายใน 1 วัน (ปรับได้ด้วย `settleMinutes`) และใช้เวลาครั้งสุดท้ายที่เข้าแล้วอยู่ต่อ การพักร์จริงซึ่งกินเวลาหลายสัปดาห์ยังแสดงครบ
+10. **ดาวพักร์** เทียบสมผุส 24:00 น. ของแต่ละวันกับวันก่อน น้อยกว่าคือพักร์ มากกว่าคือเดินหน้า เท่ากันถือตามวันก่อน (ดาวช้าบางวันสมผุสไม่ขยับเลย) แล้วรวมช่วงที่ห่างกันไม่เกิน 4 วัน และตัดช่วงที่สั้นกว่า 10 วัน ได้ช่วงพักร์ตรงกับปฏิทินโหรสุริยยาตร์
 
 ### ลัคนา
 
@@ -98,6 +103,7 @@ birthWeekday({ year: 2026, month: 11, day: 18 }, 19, 0).dayTh; // "พุธก�
 
 | สมผุส 10 ดวง ณ 24:00 น. จากปฏิทินโหราศาสตร์ไทย สุริยยาตร์ (myhora.com) พ.ศ. 2300–2700 (299 วัน × 10 ดวง) | ตรงทุกค่าระดับลิปดา |
 | เวลาย้ายราศีของอาทิตย์ อังคาร พุธ ราหู และเวลาจันทร์ยกทั้งเดือน พ.ย. 2569 | ตรงทุกนาที |
+| ช่วงดาวพักร์ (พุธ ศุกร์ อังคาร พฤหัสบดี เสาร์ มฤตยู) 112 ช่วง พ.ศ. 2400–2650 | ตรงทั้งวันเริ่มและวันจบ |
 | เวลาเถลิงศกตามประกาศสงกรานต์ 2567–2569 | ตรงทุกวินาที |
 
 ตารางเดียวกันสำหรับปี 2567 เป็นต้นไปพิมพ์ไว้ตั้งแต่ 2550 และต่างจากปฏิทินทางการ 1 วัน เราจึงตรวจปีเหล่านั้นกับวันทางการแทน
@@ -117,7 +123,7 @@ birthWeekday({ year: 2026, month: 11, day: 18 }, 19, 0).dayTh; // "พุธก�
 Thai **suriyayatra** calculations in dependency-free TypeScript:
 
 - the Thai lunar calendar — Chula Sakarat year arithmetic (horakhun, kammacaphon, avoman, tithi), adhikamas / adhikawan years, Gregorian ↔ Thai lunar dates, holy days (wan phra), Buddhist holidays, the year animal;
-- positions of the Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu and Uranus by the suriyayatra and manat rules, with sign-change times;
+- positions of the Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, Rahu, Ketu and Uranus by the suriyayatra and manat rules, with sign-change times and retrograde periods;
 - the ascendant (lagna) from rising times, and the Thai astrological birth weekday.
 
 Times run on Bangkok local mean time (UTC+06:42), as the rules do; `fromThaiTime` and `fromDate` convert. Positions are integer arcminutes from 0° Aries of the system's own zodiac.

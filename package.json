@@ -1,7 +1,7 @@
 {
   "name": "suriyayatra",
-  "version": "0.1.1",
-  "description": "Thai suriyayatra (สุริยยาตร์) calculations: the Thai lunar calendar, holy days, planet positions (Sun to Uranus, Rahu, Ketu), sign changes and the ascendant (lagna). Zero dependencies.",
+  "version": "0.1.2",
+  "description": "Thai suriyayatra (สุริยยาตร์) calculations: the Thai lunar calendar, holy days, planet positions (Sun to Uranus, Rahu, Ketu), sign changes, retrograde periods and the ascendant (lagna). Zero dependencies.",
   "keywords": [
     "thai",
     "calendar",

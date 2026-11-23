@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- `retrogrades(bodies, from, to, { gapDays, minDays })` and `isRetrograde(body, date)`:
+  retrograde periods (พักร์) of Mercury, Venus, Mars, Jupiter, Saturn and Uranus from the
+  suriyayatra positions. Equal to the 112 periods printed in a published ephemeris for
+  พ.ศ. 2400–2650 (#3).
+
 ## 0.1.1
 
 - `ingresses(bodies, from, to, { settleMinutes })`: sign changes over a span of days, with the

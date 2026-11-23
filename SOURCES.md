@@ -32,6 +32,7 @@
   time (UTC+06:42) and was checked against ประติทินโหราศาสตร์ 2417–2479 (หลวงอรรถวาทีธรรมประวรรต),
   คัมภีร์โหราศาสตร์ไทยมาตรฐาน (หลวงวิศาลดรุณกร), คัมภีร์สุริยยาตรแลมานัตต์ (อ.วรพล ไม้สน) and
   ปฏิทินโหราศาสตร์ไทย 2504–2553 (อ.ทองเจือ อ่างแก้ว). Rows are in `test/ephemeris-data.ts`.
+- **Retrograde periods**: the same site's yearly summary "ดาวโคจรวิปริต" (read 23 Nov 2026), 112 periods in `test/retrograde-data.ts`.
 
 
 See `test/data.ts`: every row names its source (Thai Wikipedia holiday tables citing

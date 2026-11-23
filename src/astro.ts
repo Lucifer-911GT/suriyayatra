@@ -379,3 +379,87 @@ export function ingresses(bodies: Body | readonly Body[], from: YMD, to: YMD, { 
   }
   return out.sort((x, y) => minutesOf(x.at) - minutesOf(y.at));
 }
+
+// ── retrograde periods (พักร์) ───────────────────────────────────────────────
+
+export type RetrogradeBody = 'mercury' | 'venus' | 'mars' | 'jupiter' | 'saturn' | 'uranus';
+export const RETROGRADE_BODIES: readonly RetrogradeBody[] = ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus'];
+
+export interface Retrograde {
+  body: RetrogradeBody;
+  /** First day whose 24:00 position is behind the day before. */
+  start: YMD;
+  /** Last day of the period. */
+  end: YMD;
+  /** end − start, in days (as Thai ephemerides count it). */
+  days: number;
+}
+
+export interface RetrogradeOptions {
+  /** Retrograde runs this many days apart or closer are one period. Default 4. */
+  gapDays?: number;
+  /** Periods shorter than this many days are dropped as boundary noise. Default 10. */
+  minDays?: number;
+}
+
+/**
+ * Day-by-day motion at 24:00: behind the day before = retrograde, ahead = direct,
+ * unchanged = as the day before (slow bodies stand still for whole days in integer arcminutes).
+ */
+function retroFlags(body: RetrogradeBody, a: number, b: number): boolean[] {
+  const out: boolean[] = [];
+  let prev = longitude(body, { jdn: a - 1, minute: MINUTES_PER_DAY });
+  let state = false;
+  for (let jdn = a; jdn <= b; jdn++) {
+    const l = longitude(body, { jdn, minute: MINUTES_PER_DAY });
+    const d = mod(l - prev + 10800, FULL) - 10800;
+    if (d !== 0) state = d < 0;
+    out.push(state);
+    prev = l;
+  }
+  return out;
+}
+
+const PAD_DAYS = 160; // longer than any retrograde (Uranus ≈ 140 days)
+
+/**
+ * Retrograde periods that overlap `from`…`to` (inclusive), in time order, each given whole.
+ * The integer rules make a planet wobble at its stations, so short runs are joined
+ * (`gapDays`) and stray ones dropped (`minDays`); with the defaults the result equals the
+ * periods printed in Thai suriyayatra ephemerides.
+ */
+export function retrogrades(bodies: RetrogradeBody | readonly RetrogradeBody[], from: YMD, to: YMD, { gapDays = 4, minDays = 10 }: RetrogradeOptions = {}): Retrograde[] {
+  const list = typeof bodies === 'string' ? [bodies] : bodies;
+  const a = toJdn(from);
+  const b = toJdn(to);
+  if (b < a) throw new RangeError('`to` is before `from`');
+  const lo = a - PAD_DAYS;
+  const hi = b + PAD_DAYS;
+  const out: Retrograde[] = [];
+  for (const body of list) {
+    const flags = retroFlags(body, lo, hi);
+    const runs: [number, number][] = [];
+    let s = -1;
+    flags.forEach((r, i) => {
+      if (r && s < 0) s = i;
+      if (!r && s >= 0) { runs.push([s + lo, i - 1 + lo]); s = -1; }
+    });
+    if (s >= 0) runs.push([s + lo, hi]);
+    const merged: [number, number][] = [];
+    for (const r of runs) {
+      const last = merged[merged.length - 1];
+      if (last && r[0] - last[1] - 1 <= gapDays) last[1] = r[1];
+      else merged.push([r[0], r[1]]);
+    }
+    for (const [p, q] of merged) {
+      if (q - p + 1 < minDays || q < a || p > b) continue;
+      out.push({ body, start: fromJdn(p), end: fromJdn(q), days: q - p });
+    }
+  }
+  return out.sort((x, y) => toJdn(x.start) - toJdn(y.start));
+}
+
+/** Whether a planet is in a retrograde period on a date (by the same rule as {@link retrogrades}). */
+export function isRetrograde(body: RetrogradeBody, date: YMD, options?: RetrogradeOptions): boolean {
+  return retrogrades(body, date, date, options).length > 0;
+}
