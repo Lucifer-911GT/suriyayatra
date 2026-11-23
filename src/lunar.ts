@@ -82,7 +82,7 @@ export function yearType(cs: number): YearType {
 
 function checkRange(cs: number) {
   if (!Number.isInteger(cs) || cs < MIN_CS || cs > MAX_CS) {
-    throw new RangeError(`Chula Sakarat year ${cs} is outside ${MIN_CS}–${MAX_CS}`);
+    throw new RangeError(`Chula Sakarat year is outside ${MIN_CS}–${MAX_CS} (the range the lunar calendar is computed for)`);
   }
 }
 
@@ -167,16 +167,17 @@ export function toThaiLunar(input: Date | YMD): ThaiLunarDate {
 
 /** Thai lunar date → Gregorian day. */
 export function fromThaiLunar(d: { cs: number; month: number; secondEighth?: boolean; phase: 'waxing' | 'waning'; day: number }): YMD {
+  if (d.phase !== 'waxing' && d.phase !== 'waning') throw new RangeError("phase must be 'waxing' or 'waning'");
   let off = 0;
   for (const m of monthsOf(d.cs)) {
     if (m.month === d.month && m.second === Boolean(d.secondEighth)) {
       const n = d.phase === 'waxing' ? d.day : d.day + 15;
-      if (d.day < 1 || d.day > 15 || n > m.days) throw new RangeError(`no ${d.phase} ${d.day} in that month`);
+      if (!Number.isInteger(d.day) || d.day < 1 || d.day > 15 || n > m.days) throw new RangeError('No such ค่ำ in that month');
       return fromJdn(yearStartJdn(d.cs) + off + n - 1);
     }
     off += m.days;
   }
-  throw new RangeError(`lunar year ${d.cs} has no month ${d.month}${d.secondEighth ? ' (second)' : ''}`);
+  throw new RangeError('That lunar year has no such month');
 }
 
 /** ชวด (rat) … กุน (pig). */

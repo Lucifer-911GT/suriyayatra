@@ -82,12 +82,23 @@ birthWeekday({ year: 2026, month: 11, day: 18 }, 19, 0).dayTh; // "พุธก�
 8. **เวลาย้ายราศี** ไล่ทีละนาทีตั้งแต่ 00:00–24:00 น. เวลาที่ได้คือนาทีแรกที่อยู่ในราศีใหม่ (แบบเดียวกับปฏิทินโหราศาสตร์)
 9. **การกระพริบข้ามขอบราศี (อนุวักระ)** สูตรจำนวนเต็มทำให้ดาวเดินช้าข้ามขอบราศีไปกลับได้หลายครั้งในเวลาไม่กี่ชั่วโมง `signChanges` รายวันแสดงทุกครั้งตามจริง ส่วน `ingresses` ตัดคู่ที่ย้อนกลับภายใน 1 วัน (ปรับได้ด้วย `settleMinutes`) และใช้เวลาครั้งสุดท้ายที่เข้าแล้วอยู่ต่อ การพักร์จริงซึ่งกินเวลาหลายสัปดาห์ยังแสดงครบ
 10. **ดาวพักร์** เทียบสมผุส 24:00 น. ของแต่ละวันกับวันก่อน น้อยกว่าคือพักร์ มากกว่าคือเดินหน้า เท่ากันถือตามวันก่อน (ดาวช้าบางวันสมผุสไม่ขยับเลย) แล้วรวมช่วงที่ห่างกันไม่เกิน 4 วัน และตัดช่วงที่สั้นกว่า 10 วัน ได้ช่วงพักร์ตรงกับปฏิทินโหรสุริยยาตร์
+    > เกณฑ์ 4 วันและ 10 วัน**ไม่ได้มาจากคัมภีร์** เป็นค่าที่หามาให้ตรงกับช่วงพักร์ที่ myhora.com ตีพิมพ์ (ซึ่งเขียนไว้ว่าปรับการแสดงผลให้พักร์ต่อเนื่อง) ปฏิทินโหรเล่มอื่นอาจตัดช่วงต่างไป ปรับได้ด้วย `gapDays` และ `minDays`
 
 ### ลัคนา
 
 ณ เวลาอาทิตย์ขึ้น ลัคนาคือตำแหน่งอาทิตย์ จากนั้นแต่ละราศีใช้เวลาตามอันโตนาทีจนพ้นขอบฟ้า ส่วนที่เหลือของราศีอาทิตย์และตำแหน่งในราศีลัคนาคิดตามสัดส่วน ค่าเริ่มต้นคือ**อันโตนาทีสามัญ** (เมษ 5, พฤษภ 4, มิถุน 3, กรกฎ 5, สิงห์ 6, กันย์ 7, ตุลย์ 7, พิจิก 6, ธนู 5, มกร 3, กุมภ์ 4, มีน 5 มหานาที, มหานาทีละ 24 นาที) และอาทิตย์ขึ้น 06:00 น. ส่งเวลาอาทิตย์ขึ้นจริงของสถานที่ (`sunrise`) หรือตารางอันโตนาทีของละติจูดอื่น (`table`) ได้
 
 แหล่งสูตรอยู่ใน [SOURCES.md](SOURCES.md)
+
+### ช่วงที่ใช้ได้และการตรวจค่า
+
+| ส่วน | คำนวณได้ | ตรวจกับข้อมูลที่ตีพิมพ์แล้ว (`VALIDATED_RANGES`) |
+|---|---|---|
+| ปฏิทินจันทรคติ วันพระ ปีนักษัตร | จ.ศ. 1250–1600 (พ.ศ. 2431–2781) นอกช่วง throw `RangeError` | พ.ศ. 2539–2574 |
+| สมผุสดาว เวลาย้ายราศี ดาวพักร์ | ทุกปี | พ.ศ. 2300–2700 |
+
+- ทุกฟังก์ชันตรวจค่าที่รับเข้ามาและ throw `RangeError` เมื่อวันที่ไม่มีจริง (เช่น 30 ก.พ.) ค่าไม่ใช่จำนวนเต็ม เวลาอยู่นอก 00:00–24:00 `Date` ไม่ valid หรือชื่อดาวไม่รู้จัก ข้อความ error ไม่สะท้อนค่าที่ส่งเข้ามา
+- `ingresses` และ `retrogrades` รับช่วงได้ไม่เกิน `DEFAULT_MAX_DAYS` (3660 วัน ราว 10 ปี) ต่อครั้ง เพื่อไม่ให้คำขอเดียวใช้ CPU นานเกินไป เพิ่มได้ด้วย `maxDays` ถ้าตั้งใจ
 
 ## ผลการตรวจสอบ
 
@@ -127,6 +138,8 @@ Thai **suriyayatra** calculations in dependency-free TypeScript:
 - the ascendant (lagna) from rising times, and the Thai astrological birth weekday.
 
 Times run on Bangkok local mean time (UTC+06:42), as the rules do; `fromThaiTime` and `fromDate` convert. Positions are integer arcminutes from 0° Aries of the system's own zodiac.
+
+Every function checks its input and throws a `RangeError` for impossible dates, out-of-range times and unknown bodies; `ingresses` and `retrogrades` take at most `DEFAULT_MAX_DAYS` (about ten years) per call unless `maxDays` says otherwise. `VALIDATED_RANGES` gives the years checked against published data.
 
 It is checked against published data only — Eade's worked examples, the official Songkran announcements, official holy days 2567–2569, an almanac table for 2539–2566, and a suriyayatra ephemeris for 2300–2700 BE (299 days × 10 bodies, all equal to the arcminute; see `test/`). One year, CS 1376 (2014), follows the published calendar rather than the rule; it is listed in `OFFICIAL_YEAR_TYPES`.
 

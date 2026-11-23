@@ -6,7 +6,7 @@
  * and the position inside the rising sign are taken in proportion. The ascendant is the
  * point reached after the time elapsed since sunrise.
  */
-import { MINUTES_PER_DAY, sunLongitude, type Moment } from './astro.js';
+import { MINUTES_PER_DAY, assertMoment, sunLongitude, type Moment } from './astro.js';
 
 const FULL = 21600;
 const mod = (a: number, n: number) => ((a % n) + n) % n;
@@ -21,7 +21,7 @@ export const MAHANATI_MINUTES = 24;
 export const RISING_SAMANYA: readonly number[] = [5, 4, 3, 5, 6, 7, 7, 6, 5, 3, 4, 5].map((n) => n * MAHANATI_MINUTES);
 
 function checkTable(table: readonly number[]) {
-  if (table.length !== 12 || table.some((v) => !(v > 0))) throw new RangeError('A rising-time table needs 12 positive values');
+  if (!Array.isArray(table) || table.length !== 12 || table.some((v) => !(v > 0) || !Number.isFinite(v))) throw new RangeError('A rising-time table needs 12 positive values');
 }
 
 /**
@@ -30,6 +30,7 @@ function checkTable(table: readonly number[]) {
  */
 export function ascendantFromSun(sunLongitudeArcmin: number, minutesAfterSunrise: number, table: readonly number[] = RISING_SAMANYA): number {
   checkTable(table);
+  if (!Number.isFinite(sunLongitudeArcmin) || !Number.isFinite(minutesAfterSunrise)) throw new RangeError('Sun longitude and minutes must be finite numbers');
   const total = table.reduce((a, b) => a + b, 0);
   let t = mod(minutesAfterSunrise, total);
   let sign = Math.floor(mod(sunLongitudeArcmin, FULL) / 1800);
@@ -57,7 +58,13 @@ export interface AscendantInput {
 }
 
 /** The ascendant at a moment, using the true Sun at sunrise of that day. */
+function checkSunrise(sunrise: number) {
+  if (!Number.isInteger(sunrise) || sunrise < 0 || sunrise >= MINUTES_PER_DAY) throw new RangeError('sunrise must be a whole minute 0–1439');
+}
+
 export function ascendant({ at, sunrise = 360, table = RISING_SAMANYA }: AscendantInput): number {
+  assertMoment(at);
+  checkSunrise(sunrise);
   // Before sunrise the day still belongs to the previous sunrise.
   const before = at.minute < sunrise;
   const jdn = before ? at.jdn - 1 : at.jdn;
@@ -72,6 +79,8 @@ export function ascendant({ at, sunrise = 360, table = RISING_SAMANYA }: Ascenda
  * Sun's sign is before sunrise.
  */
 export function risingSchedule(at: Moment, sunrise = 360, table: readonly number[] = RISING_SAMANYA): { sign: number; start: number }[] {
+  assertMoment(at);
+  checkSunrise(sunrise);
   checkTable(table);
   const sun = sunLongitude({ jdn: at.jdn, minute: sunrise });
   const s0 = Math.floor(sun / 1800);

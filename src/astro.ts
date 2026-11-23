@@ -26,6 +26,13 @@ export interface Moment {
   minute: number;
 }
 
+/** Throws a RangeError unless `m` is a whole-number day and a whole minute 0–1440. */
+export function assertMoment(m: Moment): void {
+  if (!m || !Number.isInteger(m.jdn) || !Number.isInteger(m.minute) || m.minute < 0 || m.minute > MINUTES_PER_DAY) {
+    throw new RangeError('A Moment needs a whole-number jdn and a whole minute 0–1440');
+  }
+}
+
 /** A date at 24:00 Bangkok mean time — the instant Thai ephemeris tables are printed for. */
 export function endOfDay(date: YMD): Moment {
   return { jdn: toJdn(date), minute: MINUTES_PER_DAY };
@@ -33,11 +40,15 @@ export function endOfDay(date: YMD): Moment {
 
 /** A date and clock time in Thai standard time (UTC+7). Subtracts 18 minutes. */
 export function fromThaiTime(date: YMD, hour: number, minute = 0): Moment {
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 24 || minute < 0 || minute > 59 || (hour === 24 && minute > 0)) {
+    throw new RangeError('Clock time must be 00:00–24:00');
+  }
   return normalize(toJdn(date), hour * 60 + minute - (THAI_TIME_OFFSET_MINUTES - LMT_OFFSET_MINUTES));
 }
 
 /** An instant, read on the UTC+06:42 clock. Whole minutes; seconds are dropped. */
 export function fromDate(date: Date): Moment {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) throw new RangeError('Invalid Date');
   const t = Math.floor(date.getTime() / 60000) + LMT_OFFSET_MINUTES;
   const day = Math.floor(t / MINUTES_PER_DAY);
   return { jdn: day + 2440588, minute: t - day * MINUTES_PER_DAY };
@@ -60,7 +71,9 @@ export function momentDate(m: Moment): YMD & { minute: number } {
  * Kammacaphon (กัมมัชพล) counted without a break from the era epoch: 800 per day,
  * 292207 per solar year. At 24:00 of the day with horakhun h it is 800·h − 373.
  */
-export function totalKammacaphon({ jdn, minute }: Moment): number {
+export function totalKammacaphon(m: Moment): number {
+  assertMoment(m);
+  const { jdn, minute } = m;
   const h = jdn - HORAKHUN_JDN;
   return KAMMACAPHON_PER_DAY * (h - 1) - EPOCH_OFFSET + Math.floor((minute * KAMMACAPHON_PER_DAY) / MINUTES_PER_DAY);
 }
@@ -111,6 +124,7 @@ export function sunLongitude(m: Moment): number {
  * from อุจจพล (3232 days per revolution) + 2′.
  */
 export function moonLongitude(m: Moment): number {
+  assertMoment(m);
   const h = m.jdn - HORAKHUN_JDN - 1;
   const n = mod(h * 703 + 650 + Math.floor((m.minute * 703) / MINUTES_PER_DAY), 20760);
   const tithi = Math.floor(n / 692);
@@ -139,6 +153,7 @@ export function rahuLongitude(m: Moment): number {
 
 /** Ketu (เกตุ) of Thai astrology — a separate point with a 679-day retrograde cycle. */
 export function ketuLongitude(m: Moment): number {
+  assertMoment(m);
   const c = mod(m.jdn - HORAKHUN_JDN - 1 - 344, 679);
   return mod(FULL - Math.floor(((c * MINUTES_PER_DAY + m.minute) * FULL) / (679 * MINUTES_PER_DAY)), FULL);
 }
@@ -203,6 +218,7 @@ const INNER: Record<'mercury' | 'venus', InnerModel> = {
 export type ClassicalPlanet = 'mars' | 'mercury' | 'jupiter' | 'venus' | 'saturn' | 'uranus';
 
 export function planetLongitude(planet: ClassicalPlanet, m: Moment): number {
+  if (!(planet in OUTER) && !(planet in INNER)) throw new RangeError('Unknown planet');
   const K = totalKammacaphon(m);
   const S = solarAccumulation(K);
   const ravi = mod(meanSunRaw(K) - 23, FULL);
@@ -233,7 +249,9 @@ export function longitude(body: Body, m: Moment): number {
     case 'moon': return moonLongitude(m);
     case 'rahu': return rahuLongitude(m);
     case 'ketu': return ketuLongitude(m);
-    default: return planetLongitude(body, m);
+    case 'mars': case 'mercury': case 'jupiter': case 'venus': case 'saturn': case 'uranus':
+      return planetLongitude(body, m);
+    default: throw new RangeError('Unknown body');
   }
 }
 
@@ -248,6 +266,7 @@ export interface Position {
 }
 
 export function position(arcminutes: number): Position {
+  if (!Number.isFinite(arcminutes)) throw new RangeError('Longitude must be a finite number');
   const l = mod(Math.floor(arcminutes), FULL);
   const sign = Math.floor(l / 1800);
   const inSign = l - sign * 1800;
@@ -256,7 +275,7 @@ export function position(arcminutes: number): Position {
 
 /** All ten bodies at a moment. Default moment: 24:00 of the date, as in Thai ephemerides. */
 export function positions(at: Moment | YMD): Record<Body, Position> {
-  const m = 'jdn' in at ? at : endOfDay(at);
+  const m = at && 'jdn' in at ? at : endOfDay(at as YMD);
   const out = {} as Record<Body, Position>;
   for (const b of BODIES) out[b] = position(longitude(b, m));
   return out;
@@ -277,6 +296,7 @@ export interface SignChange {
  * days with those flickers merged, use {@link ingresses}.
  */
 export function signChanges(date: YMD, bodies: readonly Body[] = BODIES): SignChange[] {
+  checkBodies(bodies, BODIES);
   const jdn = toJdn(date);
   const out: SignChange[] = [];
   for (const body of bodies) {
@@ -294,6 +314,24 @@ export function signChanges(date: YMD, bodies: readonly Body[] = BODIES): SignCh
 export function clock(minute: number): string {
   const h = Math.floor(minute / 60);
   return `${String(h).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+}
+
+// ── spans ────────────────────────────────────────────────────────────────────
+
+/** Default longest span, in days, that {@link ingresses} and {@link retrogrades} accept (about ten years). */
+export const DEFAULT_MAX_DAYS = 3660;
+
+function span(from: YMD, to: YMD, maxDays: number): [number, number] {
+  const a = toJdn(from);
+  const b = toJdn(to);
+  if (b < a) throw new RangeError('`to` is before `from`');
+  if (!(maxDays > 0)) throw new RangeError('maxDays must be positive');
+  if (b - a + 1 > maxDays) throw new RangeError(`The span is longer than maxDays (${maxDays}); split it or raise maxDays`);
+  return [a, b];
+}
+
+function checkBodies<T extends string>(list: readonly T[], allowed: readonly string[]): void {
+  if (!Array.isArray(list) || list.some((b) => !allowed.includes(b))) throw new RangeError('Unknown body');
 }
 
 // ── sign changes over a span, with flicker merged ───────────────────────────
@@ -315,6 +353,8 @@ export interface IngressOptions {
    * for the raw minute-by-minute list of a single day.
    */
   settleMinutes?: number;
+  /** Longest span accepted, in days. Default {@link DEFAULT_MAX_DAYS}. */
+  maxDays?: number;
 }
 
 function raw(body: Body, fromJdn: number, toJdn: number): Ingress[] {
@@ -365,11 +405,11 @@ export function settleIngresses(events: readonly Ingress[], settle: number): Ing
  * (inclusive dates), in time order. The time of each change is its first whole minute
  * in the new sign, as Thai ephemerides print it.
  */
-export function ingresses(bodies: Body | readonly Body[], from: YMD, to: YMD, { settleMinutes = MINUTES_PER_DAY }: IngressOptions = {}): Ingress[] {
+export function ingresses(bodies: Body | readonly Body[], from: YMD, to: YMD, { settleMinutes = MINUTES_PER_DAY, maxDays = DEFAULT_MAX_DAYS }: IngressOptions = {}): Ingress[] {
   const list = typeof bodies === 'string' ? [bodies] : bodies;
-  const a = toJdn(from);
-  const b = toJdn(to);
-  if (b < a) throw new RangeError('`to` is before `from`');
+  checkBodies(list, BODIES);
+  if (!Number.isFinite(settleMinutes)) throw new RangeError('settleMinutes must be a number');
+  const [a, b] = span(from, to, maxDays);
   const out: Ingress[] = [];
   // A little margin on both sides so a flicker that straddles the span is still settled.
   const pad = Math.ceil(settleMinutes / MINUTES_PER_DAY);
@@ -400,6 +440,8 @@ export interface RetrogradeOptions {
   gapDays?: number;
   /** Periods shorter than this many days are dropped as boundary noise. Default 10. */
   minDays?: number;
+  /** Longest span accepted, in days. Default {@link DEFAULT_MAX_DAYS}. */
+  maxDays?: number;
 }
 
 /**
@@ -428,11 +470,11 @@ const PAD_DAYS = 160; // longer than any retrograde (Uranus ≈ 140 days)
  * (`gapDays`) and stray ones dropped (`minDays`); with the defaults the result equals the
  * periods printed in Thai suriyayatra ephemerides.
  */
-export function retrogrades(bodies: RetrogradeBody | readonly RetrogradeBody[], from: YMD, to: YMD, { gapDays = 4, minDays = 10 }: RetrogradeOptions = {}): Retrograde[] {
+export function retrogrades(bodies: RetrogradeBody | readonly RetrogradeBody[], from: YMD, to: YMD, { gapDays = 4, minDays = 10, maxDays = DEFAULT_MAX_DAYS }: RetrogradeOptions = {}): Retrograde[] {
   const list = typeof bodies === 'string' ? [bodies] : bodies;
-  const a = toJdn(from);
-  const b = toJdn(to);
-  if (b < a) throw new RangeError('`to` is before `from`');
+  checkBodies(list, RETROGRADE_BODIES);
+  if (!Number.isInteger(gapDays) || gapDays < 0 || !Number.isInteger(minDays) || minDays < 1) throw new RangeError('gapDays must be ≥ 0 and minDays ≥ 1, whole numbers');
+  const [a, b] = span(from, to, maxDays);
   const lo = a - PAD_DAYS;
   const hi = b + PAD_DAYS;
   const out: Retrograde[] = [];

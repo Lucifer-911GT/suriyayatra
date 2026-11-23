@@ -6,7 +6,25 @@ export interface YMD {
   day: number;   // 1–31
 }
 
-export function toJdn({ year, month, day }: YMD): number {
+const DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const leap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+
+/** Whether `d` is a real calendar day with whole-number fields. */
+export function isValidYmd(d: YMD): boolean {
+  if (!d || !Number.isInteger(d.year) || !Number.isInteger(d.month) || !Number.isInteger(d.day)) return false;
+  if (d.month < 1 || d.month > 12 || d.day < 1) return false;
+  return d.day <= (d.month === 2 && leap(d.year) ? 29 : DAYS[d.month - 1]);
+}
+
+/** Throws a RangeError unless `d` is a real calendar day. */
+export function assertYmd(d: YMD): void {
+  if (!isValidYmd(d)) throw new RangeError('Not a calendar date (year, month 1–12 and day must be whole numbers that exist)');
+}
+
+/** Calendar day → Julian Day Number. Throws a RangeError for a day that does not exist (e.g. 30 February). */
+export function toJdn(d: YMD): number {
+  assertYmd(d);
+  const { year, month, day } = d;
   const a = Math.floor((14 - month) / 12);
   const y = year + 4800 - a;
   const m = month + 12 * a - 3;
@@ -14,6 +32,7 @@ export function toJdn({ year, month, day }: YMD): number {
 }
 
 export function fromJdn(jdn: number): YMD {
+  if (!Number.isInteger(jdn)) throw new RangeError('A Julian Day Number must be a whole number');
   const a = jdn + 32044;
   const b = Math.floor((4 * a + 3) / 146097);
   const c = a - Math.floor((146097 * b) / 4);
@@ -29,6 +48,7 @@ export function fromJdn(jdn: number): YMD {
 
 /** The Thai calendar day (UTC+7) of a JavaScript Date. */
 export function thaiDay(date: Date): YMD {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) throw new RangeError('Invalid Date');
   const t = new Date(date.getTime() + 7 * 3_600_000);
   return { year: t.getUTCFullYear(), month: t.getUTCMonth() + 1, day: t.getUTCDate() };
 }

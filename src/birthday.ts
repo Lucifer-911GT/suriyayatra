@@ -34,6 +34,10 @@ export function weekday(date: YMD): number {
 export function birthWeekday(date: YMD, hour?: number, minute = 0, dayStart = 360): BirthWeekday {
   const cal = weekday(date);
   if (hour === undefined) return make(cal, false);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    throw new RangeError('Birth time must be 00:00–23:59');
+  }
+  if (!Number.isInteger(dayStart) || dayStart < 0 || dayStart >= 1440) throw new RangeError('dayStart must be a whole minute 0–1439');
   const t = hour * 60 + minute;
   const early = t < dayStart;
   const day = early ? (cal + 6) % 7 : cal;

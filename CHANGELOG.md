@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.3
+
+- Input is checked: impossible dates (30 Feb), non-integer fields, minutes outside 0–1440,
+  clock times outside 00:00–24:00, invalid `Date`s and unknown bodies throw a `RangeError`
+  instead of giving a silent wrong answer or `null`. Error messages do not echo the input (#4).
+- `ingresses` and `retrogrades` refuse spans longer than `maxDays` (default `DEFAULT_MAX_DAYS`,
+  3660 days) so one call cannot tie up a server.
+- `VALIDATED_RANGES`: the years each part was checked against published data.
+- README: supported vs validated ranges; the retrograde thresholds are fitted to a published
+  ephemeris, not taken from the classical texts.
+
+
 ## 0.1.2
 
 - `retrogrades(bodies, from, to, { gapDays, minDays })` and `isRetrograde(body, date)`:

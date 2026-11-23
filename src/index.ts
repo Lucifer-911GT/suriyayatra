@@ -5,3 +5,4 @@ export { buddhistHolyDays, holyDays, type BuddhistHolyDays } from './holidays.js
 export * from './astro.js';
 export * from './lagna.js';
 export * from './birthday.js';
+export * from './ranges.js';
