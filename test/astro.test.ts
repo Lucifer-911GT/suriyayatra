@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BODIES, endOfDay, longitude, positions, signChanges, clock, fromThaiTime, fromDate, momentDate,
   totalKammacaphon, eraYear, toJdn, sunLongitude, ascendantFromSun, ascendant, risingSchedule,
-  RISING_SAMANYA, birthWeekday, weekday, yearAnimal, type Body,
+  RISING_SAMANYA, birthWeekday, weekday, yearAnimal, ingresses, type Body,
 } from '../src/index.js';
 import { EPHEMERIS, SIGN_CHANGES_NOV_2569, MOON_SIGN_CHANGES_NOV_2569 } from './ephemeris-data.js';
 
@@ -108,5 +108,39 @@ describe('year animal changes at ขึ้น 1 ค่ำ เดือน 5', ()
     expect(yearAnimal({ year: 2026, month: 11, day: 21 }).th).toBe('มะเมีย');
     expect(yearAnimal({ year: 2026, month: 3, day: 19 }).th).toBe('มะเมีย');
     expect(yearAnimal({ year: 2026, month: 3, day: 18 }).th).toBe('มะเส็ง');
+  });
+});
+
+describe('ingresses over a span', () => {
+  it('agrees with the published November 2569 changes', () => {
+    const ev = ingresses(['sun', 'mars', 'mercury', 'rahu'], { year: 2026, month: 11, day: 1 }, { year: 2026, month: 11, day: 30 });
+    expect(ev.map((e) => [e.body, momentDate(e.at).day, clock(e.at.minute), e.to])).toEqual(
+      SIGN_CHANGES_NOV_2569.map((e) => [e.body, e.day, e.time, e.to]),
+    );
+  });
+
+  it('merges a boundary flicker into one change (Mars, 19 Mar 2570)', () => {
+    const day = { year: 2027, month: 3, day: 19 };
+    const raw = [
+      ...signChanges({ year: 2027, month: 3, day: 18 }, ['mars']),
+      ...signChanges(day, ['mars']),
+    ];
+    expect(raw.length).toBeGreaterThan(1);
+    const ev = ingresses('mars', { year: 2027, month: 3, day: 15 }, { year: 2027, month: 3, day: 25 });
+    expect(ev).toHaveLength(1);
+    expect([ev[0].from, ev[0].to]).toEqual([4, 3]);
+    // the last entry, after which it stays
+    expect(clock(ev[0].at.minute)).toBe(clock(raw[raw.length - 1].minute));
+  });
+
+  it('keeps real retrograde returns, which last weeks', () => {
+    const ev = ingresses('mars', { year: 2026, month: 11, day: 1 }, { year: 2027, month: 5, day: 31 });
+    expect(ev.map((e) => e.to)).toEqual([4, 3, 4]);
+  });
+
+  it('a year of nine bodies is quick', () => {
+    const t = Date.now();
+    ingresses(['sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'rahu', 'ketu', 'uranus'], { year: 2026, month: 1, day: 1 }, { year: 2026, month: 12, day: 31 });
+    expect(Date.now() - t).toBeLessThan(2000);
   });
 });

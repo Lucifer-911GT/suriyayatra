@@ -273,6 +273,8 @@ export interface SignChange {
 /**
  * Sign changes during one calendar day, found minute by minute from 00:00 to 24:00
  * (the convention of Thai ephemerides: the time printed is the first minute in the new sign).
+ * Raw: near a boundary a slow body can cross back and forth several times. For a span of
+ * days with those flickers merged, use {@link ingresses}.
  */
 export function signChanges(date: YMD, bodies: readonly Body[] = BODIES): SignChange[] {
   const jdn = toJdn(date);
@@ -292,4 +294,88 @@ export function signChanges(date: YMD, bodies: readonly Body[] = BODIES): SignCh
 export function clock(minute: number): string {
   const h = Math.floor(minute / 60);
   return `${String(h).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+}
+
+// ── sign changes over a span, with flicker merged ───────────────────────────
+
+export interface Ingress {
+  body: Body;
+  /** The moment it entered the new sign (UTC+06:42 clock). */
+  at: Moment;
+  from: number;
+  to: number;
+}
+
+export interface IngressOptions {
+  /**
+   * Near a sign boundary the integer rules can step back and forth across it for a while
+   * (the ephemerides call it อนุวักระ). Changes that are undone within this many minutes are
+   * dropped, and the last entry is kept. Default 1440 (one day). 0 turns this off, but
+   * a change undone inside the same clock hour is never reported; use {@link signChanges}
+   * for the raw minute-by-minute list of a single day.
+   */
+  settleMinutes?: number;
+}
+
+function raw(body: Body, fromJdn: number, toJdn: number): Ingress[] {
+  const out: Ingress[] = [];
+  const step = 60;
+  const at = (jdn: number, minute: number) => Math.floor(longitude(body, { jdn, minute }) / 1800);
+  for (let jdn = fromJdn; jdn <= toJdn; jdn++) {
+    let prev = at(jdn, 0);
+    for (let m0 = 0; m0 < MINUTES_PER_DAY; m0 += step) {
+      const end = at(jdn, m0 + step);
+      if (end === prev) {
+        // A flicker that is undone inside the hour never reaches the result.
+        continue;
+      }
+      let s = prev;
+      for (let minute = m0 + 1; minute <= m0 + step; minute++) {
+        const t = at(jdn, minute);
+        if (t !== s) {
+          out.push({ body, at: { jdn, minute }, from: s, to: t });
+          s = t;
+        }
+      }
+      prev = end;
+    }
+  }
+  return out;
+}
+
+const minutesOf = (m: Moment) => m.jdn * MINUTES_PER_DAY + m.minute;
+
+/** Drops changes that are reversed within `settle` minutes; keeps the last entry. */
+export function settleIngresses(events: readonly Ingress[], settle: number): Ingress[] {
+  if (settle <= 0) return [...events];
+  const kept: Ingress[] = [];
+  for (const e of events) {
+    const last = kept[kept.length - 1];
+    if (last && last.body === e.body && last.to === e.from && last.from === e.to && minutesOf(e.at) - minutesOf(last.at) <= settle) {
+      kept.pop();
+      continue;
+    }
+    kept.push(e);
+  }
+  return kept;
+}
+
+/**
+ * Sign changes of one or more bodies from the start of `from` to 24:00 of `to`
+ * (inclusive dates), in time order. The time of each change is its first whole minute
+ * in the new sign, as Thai ephemerides print it.
+ */
+export function ingresses(bodies: Body | readonly Body[], from: YMD, to: YMD, { settleMinutes = MINUTES_PER_DAY }: IngressOptions = {}): Ingress[] {
+  const list = typeof bodies === 'string' ? [bodies] : bodies;
+  const a = toJdn(from);
+  const b = toJdn(to);
+  if (b < a) throw new RangeError('`to` is before `from`');
+  const out: Ingress[] = [];
+  // A little margin on both sides so a flicker that straddles the span is still settled.
+  const pad = Math.ceil(settleMinutes / MINUTES_PER_DAY);
+  for (const body of list) {
+    const settled = settleIngresses(raw(body, a - pad, b + pad), settleMinutes);
+    out.push(...settled.filter((e) => e.at.jdn >= a && e.at.jdn <= b));
+  }
+  return out.sort((x, y) => minutesOf(x.at) - minutesOf(y.at));
 }
