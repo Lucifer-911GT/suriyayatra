@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lucifer-911GT
 /** Proleptic Gregorian calendar ↔ Julian Day Number (integer, noon-based day count). */
 
 export interface YMD {
@@ -6,19 +8,27 @@ export interface YMD {
   day: number;   // 1–31
 }
 
+/**
+ * Largest |year| a date may have. Far beyond any real use, it keeps every intermediate value of
+ * the rules an exact integer (below 2^53), so an absurd date is refused instead of answered wrong.
+ */
+export const MAX_ABS_YEAR = 1_000_000;
+/** Largest |JDN| accepted, a little past the JDN of {@link MAX_ABS_YEAR}. */
+export const MAX_ABS_JDN = 400_000_000;
+
 const DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const leap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 
 /** Whether `d` is a real calendar day with whole-number fields. */
 export function isValidYmd(d: YMD): boolean {
   if (!d || !Number.isInteger(d.year) || !Number.isInteger(d.month) || !Number.isInteger(d.day)) return false;
-  if (d.month < 1 || d.month > 12 || d.day < 1) return false;
+  if (Math.abs(d.year) > MAX_ABS_YEAR || d.month < 1 || d.month > 12 || d.day < 1) return false;
   return d.day <= (d.month === 2 && leap(d.year) ? 29 : DAYS[d.month - 1]);
 }
 
 /** Throws a RangeError unless `d` is a real calendar day. */
 export function assertYmd(d: YMD): void {
-  if (!isValidYmd(d)) throw new RangeError('Not a calendar date (year, month 1–12 and day must be whole numbers that exist)');
+  if (!isValidYmd(d)) throw new RangeError(`Not a calendar date (whole-number year within ±${MAX_ABS_YEAR}, month 1–12 and a day that exists)`);
 }
 
 /** Calendar day → Julian Day Number. Throws a RangeError for a day that does not exist (e.g. 30 February). */
@@ -32,7 +42,7 @@ export function toJdn(d: YMD): number {
 }
 
 export function fromJdn(jdn: number): YMD {
-  if (!Number.isInteger(jdn)) throw new RangeError('A Julian Day Number must be a whole number');
+  if (!Number.isInteger(jdn) || Math.abs(jdn) > MAX_ABS_JDN) throw new RangeError(`A Julian Day Number must be a whole number within ±${MAX_ABS_JDN}`);
   const a = jdn + 32044;
   const b = Math.floor((4 * a + 3) / 146097);
   const c = a - Math.floor((146097 * b) / 4);

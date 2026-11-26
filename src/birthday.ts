@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lucifer-911GT
 /**
  * The Thai astrological birth weekday (วันเกิดทางโหราศาสตร์).
  *
@@ -6,13 +8,20 @@
  * ruled by Rahu (๘).
  */
 import { toJdn, type YMD } from './julian.js';
+import { mod } from './math.js';
+
+/** 0 = Sunday … 6 = Saturday. */
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/** The planet of a birth day as Thai astrology counts them: 1 อาทิตย์ … 7 เสาร์, 8 ราหู (Wednesday night). */
+export type DayPlanet = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export interface BirthWeekday {
   /** 0 = Sunday … 6 = Saturday, 7 = Wednesday night. */
-  index: number;
+  index: Weekday | 7;
   dayTh: string;
   /** Ruling body: 1 อาทิตย์ … 7 เสาร์, 8 ราหู. */
-  planet: number;
+  planet: DayPlanet;
   planetTh: string;
   /** True when a birth before 06:00 was moved to the previous day. */
   previousDay: boolean;
@@ -22,8 +31,9 @@ const DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร
 const PLANETS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์', 'ราหู'];
 
 /** Weekday of a calendar date, 0 = Sunday. */
-export function weekday(date: YMD): number {
-  return (toJdn(date) + 1) % 7;
+export function weekday(date: YMD): Weekday {
+  // Floor modulo: JDNs before 4713 BCE are negative, and `%` would give a negative weekday there.
+  return mod(toJdn(date) + 1, 7) as Weekday;
 }
 
 /**
@@ -40,11 +50,11 @@ export function birthWeekday(date: YMD, hour?: number, minute = 0, dayStart = 36
   if (!Number.isInteger(dayStart) || dayStart < 0 || dayStart >= 1440) throw new RangeError('dayStart must be a whole minute 0–1439');
   const t = hour * 60 + minute;
   const early = t < dayStart;
-  const day = early ? (cal + 6) % 7 : cal;
+  const day = (early ? (cal + 6) % 7 : cal) as Weekday;
   const wedNight = day === 3 && (early || t >= 18 * 60);
   return make(wedNight ? 7 : day, early);
 }
 
-function make(index: number, previousDay: boolean): BirthWeekday {
-  return { index, dayTh: DAYS[index], planet: index + 1, planetTh: PLANETS[index], previousDay };
+function make(index: Weekday | 7, previousDay: boolean): BirthWeekday {
+  return { index, dayTh: DAYS[index], planet: (index + 1) as DayPlanet, planetTh: PLANETS[index], previousDay };
 }

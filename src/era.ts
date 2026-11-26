@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lucifer-911GT
 /**
  * The year-start (เถลิงศก) arithmetic of the Thai suriyayatra (สุริยยาตร์)
  * method, counted from the Chula Sakarat (จุลศักราช, CS) epoch.
@@ -19,9 +21,13 @@ export const EPOCH_OFFSET = 373;
 export const HORAKHUN_JDN = 1954167;
 
 /** Buddhist-era year whose Songkran falls in a given Chula Sakarat year. */
-export const csToBe = (cs: number) => cs + 1181;
-export const beToCs = (be: number) => be - 1181;
-export const csToCe = (cs: number) => cs + 638;
+const whole = (y: number): number => {
+  if (!Number.isInteger(y)) throw new RangeError('A year must be a whole number');
+  return y;
+};
+export const csToBe = (cs: number): number => whole(cs) + 1181;
+export const beToCs = (be: number): number => whole(be) - 1181;
+export const csToCe = (cs: number): number => whole(cs) + 638;
 
 export interface EraYear {
   /** Chula Sakarat year (จุลศักราช). */
@@ -42,7 +48,13 @@ export interface EraYear {
   thaloengSokJdn: number;
 }
 
+/** Throws a RangeError unless `cs` is a whole, non-negative Chula Sakarat year. */
+export function assertCsYear(cs: number): void {
+  if (!Number.isInteger(cs) || cs < 0) throw new RangeError('A Chula Sakarat year must be a whole number ≥ 0');
+}
+
 export function eraYear(cs: number): EraYear {
+  assertCsYear(cs);
   const n = cs * KAMMACAPHON_PER_YEAR + EPOCH_OFFSET;
   const horakhun = Math.floor(n / KAMMACAPHON_PER_DAY) + 1;
   const kammacaphon = KAMMACAPHON_PER_DAY - (n % KAMMACAPHON_PER_DAY);

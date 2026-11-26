@@ -1,31 +1,53 @@
 # Sources
 
-## Formulas
+## Texts studied
 
+The calculations follow these texts and studies. The rules themselves are not restated here.
+
+- คัมภีร์สุริยยาตร์ and คัมภีร์มานัตต์: the lunar calendar and the positions of the planets.
 - J. C. Eade, "Rules for Interpolation in the Thai Calendar: Suriyayatra versus the Sasana",
-  *Journal of the Siam Society* 88 (2000). Year-start arithmetic, the อธิกวาร rule (กัมมัชพล ≤ 207;
-  อวมาน ≤ 126 / ≤ 137), the rule that an อธิกมาส year cannot also take the extra day,
-  and the worked example for CS 1325 (Appendix A), used as a test.
+  *Journal of the Siam Society* 88 (2000); its worked example for CS 1325 is one of the tests.
 - L. Gislén and J. C. Eade, "The Calendars of Southeast Asia, 2: Burma and Thailand"
   (*Journal of Astronomical History and Heritage* 22, 2019; via NARIT).
-- ผ่า คัมภีร์ พระสุริยยาตร์ และ พระมานัตต์ (rungnapa-astro.com) — หรคุณเถลิงศก, กัมมัชพล, อวมาน.
-- วิวิธโหราศาสตร์ — ภาคคำนวณสุริยยาตร: definitions of หรคุณ, กัมมัชพล, อวมาน.
-- The tithi 24→6 and 25→5 adjustments to the อธิกมาส rule follow F. G. Faraut (as implemented
-  in [pythaidate](https://github.com/hmmbug/pythaidate), MIT, © 2023 Mark Hollow).
-  No code was copied; the rule was re-implemented here.
-
 - L. Gislén, "Planetary longitudes in Thai and Burmese astronomy"
-  (*Journal of Astronomical History and Heritage* 22, 2019; via NARIT): the Sun and Moon procedure
-  (24350 / 811 / 14, −3′; อวมาน ÷ 25, −40′; อุจจพล 3232 days; the Sun and Moon equation tables),
-  the two-step planetary correction scheme, and the Thai periods of Rahu (6795 days) and Ketu (679).
-- โหราวิทยา ภาค 1 บทที่ 8 (reproduced on astroneemo.net): the ordinary rising-time table
-  (อันโตนาทีสามัญ) and the rule for reading the ascendant from the time after sunrise.
-- [thai-astrology](https://github.com/Kongesque/thai-astrology) (MIT, © 2026 Kongesque) was read
-  as a cross-reference for the classical planetary constants (mean-motion divisors, apogees,
-  divisors of the corrections, the shadow table 0/244/427/488). No code was copied; the procedure
-  was written here independently and every constant was confirmed against the ephemeris below.
+  (*Journal of Astronomical History and Heritage* 22, 2019; via NARIT).
+- F. G. Faraut on the Siamese calendar, as implemented in
+  [pythaidate](https://github.com/hmmbug/pythaidate) (MIT, © 2023 Mark Hollow). No code was copied.
+- ผ่า คัมภีร์ พระสุริยยาตร์ และ พระมานัตต์ (rungnapa-astro.com).
+- วิวิธโหราศาสตร์: ภาคคำนวณสุริยยาตร, and "กระดานดวงเดิม" (hippohoro.blogspot.com, 2558) on the
+  named ascendant variants of สุริยยาตรวิธี, among them อันโตนาทีสามัญ สมผุสอาทิตย์อุทัย.
+- โหราวิทยา ภาค 1 บทที่ 8 (reproduced on astroneemo.net): the ascendant by อันโตนาทีสามัญ.
+- J. Meeus, *Astronomical Algorithms* (2nd ed., 1998), through the NOAA Global Monitoring
+  Laboratory solar calculator: sunrise.
+- Province coordinates, codes and English names: dataengineercafe/thailand-province-latitude-longitude,
+  MIT License, Copyright (c) 2020 BearData.io. The full MIT notice is in NOTICE, which ships with
+  the package.
+
+## Textbook day rules (`thaiDayRules`)
+
+- กาลโยค, checked against yearly tables published by myhora, Lemon8 and
+  Pantip for จ.ศ. 1347, 1382, 1384 and 1387–1390.
+- ดิถี tables (อำมฤตโชค, สิทธิโชค, มหาสิทธิโชค, ชัยโชค, ราชาโชค and nineteen bad ดิถี); where the
+  books differ, หลวงวิศาลดรุณกร, *คัมภีร์โหราศาสตร์ไทยมาตรฐาน*. Good ดิถี of January 2567 checked
+  against PPTV's "วันมงคลมหาโชค" list.
+- ดิถีมหาสูญ by the Sun's sign: ปฏิทินโหราศาสตร์ไทย, อ.ทองเจือ อ่างแก้ว; the lunar-month version:
+  ตำราพรหมชาติ (reported, not a ban).
+- ฤกษ์บน change times checked against the printed suriyayatra almanac (myhora, dooroek) for
+  7 and 28 January and 27 July 2569.
+
+## Checked notes
+
+- **ดิถียมขันธ์ and ดิถีพิฆาต** fall on the same ค่ำ for every weekday. Checked against the book on
+  26 Nov 2569: this is what the book gives, so such a day carries both names.
+- **ดิถีพิฆาต in other traditions.** Some Lanna texts and ฤกษ์พรหมประสิทธิ์ tables (there sometimes
+  calling it มหาศูนย์) give different ค่ำ on Wednesday, Friday and Saturday. This package follows
+  the standard book. The variant is reported in almanac articles and has not been checked here
+  against a primary text.
 
 ## Validation data
+
+The data below belongs to its sources. It is used only to test the calculations, is not shipped
+in the npm package, and is not covered by this project's license (Apache-2.0).
 
 - **Planet positions**: myhora.com, ปฏิทินโหราศาสตร์ไทย สุริยยาตร์ (monthly and daily pages, read
   21 Nov 2026). It states it computes by คัมภีร์สุริยยาตร์ and คัมภีร์มานัตต์ at 24:00 Bangkok mean

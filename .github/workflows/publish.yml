@@ -1,0 +1,81 @@
+# Stages a release on npm when a version tag (v1.2.3) on main is pushed, through npm Trusted
+# Publishing (OIDC): no npm token is stored anywhere, and npm generates provenance on its own.
+#
+# The version is only *staged*: nothing reaches users until a maintainer approves it with 2FA,
+# on npmjs.com (package → Staged Packages → Approve) or with `npm stage list` then
+# `npm stage approve <stage-id>`. OIDC tokens cannot approve, so a compromised workflow or
+# GitHub account cannot release on its own.
+#
+# Two jobs: `verify` runs the checks with no OIDC permission; only `stage` can ask GitHub for an
+# OIDC token, and it installs without running any package scripts. Actions are pinned to commits.
+#
+# One-time setup on npmjs.com: package → Settings → Trusted Publisher → GitHub Actions,
+# repository Lucifer-911GT/suriyayatra, workflow "publish.yml", "Allow npm publish" unchecked.
+# The first staged publish must happen within 2 days of saving that, or it expires.
+name: Stage release on npm
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0 # to check that the tag is on main
+
+      - name: The tagged commit must be on main
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - name: The tag must match package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $version" >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24' # vitest 5 needs Node 22.12+
+          package-manager-cache: false
+
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run check:package
+
+  stage:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # the OIDC token npm checks; only this job has it
+    env:
+      npm_config_ignore_scripts: 'true' # no package script runs while the token can be minted
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24' # staged publishing needs Node 22.14+
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      # Staged publishing needs npm 11.15.0 or later; pinned to an exact version.
+      - run: npm install -g npm@11.21.3
+
+      # Only TypeScript is needed to build; no package scripts run while the token is available.
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - run: npm stage publish

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Lucifer-911GT
 /**
  * The Thai lunar calendar (ปฏิทินจันทรคติไทย) as the suriyayatra rules lay it
  * out, year by year from เดือน 5 (Caitra) to เดือน 4.
@@ -21,7 +23,7 @@ import { fromJdn, toJdn, toYmd, type YMD } from './julian.js';
 
 export type YearType = 'normal' | 'adhikawan' | 'adhikamas';
 
-export const YEAR_LENGTH: Record<YearType, number> = { normal: 354, adhikawan: 355, adhikamas: 384 };
+export const YEAR_LENGTH: Readonly<Record<YearType, number>> = Object.freeze({ normal: 354, adhikawan: 355, adhikamas: 384 });
 
 /**
  * Years where the published Thai calendar departs from the rules.
@@ -29,9 +31,9 @@ export const YEAR_LENGTH: Record<YearType, number> = { normal: 354, adhikawan: 3
  * the holy days of 2539–2557 and 2558–2569 are only consistent with a
  * 354-day year here.
  */
-export const OFFICIAL_YEAR_TYPES: Readonly<Record<number, YearType>> = {
+export const OFFICIAL_YEAR_TYPES: Readonly<Record<number, YearType>> = Object.freeze({
   1376: 'normal',
-};
+});
 
 /**
  * Anchor: วันอาสาฬหบูชา 2562 (ขึ้น 15 ค่ำ เดือน 8, CS 1381, a ปกติมาส year)
@@ -59,6 +61,7 @@ const typeCache = new Map<number, YearType>();
 
 /** Year type by the rules alone (no official exceptions), including a carried day. */
 export function ruleYearType(cs: number): YearType {
+  checkRange(cs);
   // the carried extra day only looks back a few years
   let carry = false;
   let type: YearType = 'normal';
@@ -75,12 +78,13 @@ export function ruleYearType(cs: number): YearType {
 export function yearType(cs: number): YearType {
   const hit = typeCache.get(cs);
   if (hit) return hit;
+  checkRange(cs); // also keeps the cache to the supported years
   const t = OFFICIAL_YEAR_TYPES[cs] ?? ruleYearType(cs);
   typeCache.set(cs, t);
   return t;
 }
 
-function checkRange(cs: number) {
+function checkRange(cs: number): void {
   if (!Number.isInteger(cs) || cs < MIN_CS || cs > MAX_CS) {
     throw new RangeError(`Chula Sakarat year is outside ${MIN_CS}–${MAX_CS} (the range the lunar calendar is computed for)`);
   }
@@ -119,6 +123,8 @@ export function monthsOf(cs: number): LunarMonth[] {
   ];
 }
 
+export type LunarPhase = 'waxing' | 'waning';
+
 export interface ThaiLunarDate {
   /** Lunar year (from เดือน 5) by its Chula Sakarat number. */
   cs: number;
@@ -126,7 +132,7 @@ export interface ThaiLunarDate {
   /** The second เดือน 8 (เดือนแปดหลัง) of an อธิกมาส year. */
   secondEighth: boolean;
   /** ข้างขึ้น (waxing) or ข้างแรม (waning). */
-  phase: 'waxing' | 'waning';
+  phase: LunarPhase;
   /** 1–15 (ค่ำ). */
   day: number;
   /** Days in this month: 29 ends at แรม 14 ค่ำ. */
@@ -140,16 +146,22 @@ export interface ThaiLunarDate {
 const MONTH_NAME: Record<number, string> = { 1: 'อ้าย', 2: 'ยี่' };
 
 export function monthLabel(month: number, secondEighth = false): string {
-  if (secondEighth) return 'เดือน 8 หลัง';
+  if (!Number.isInteger(month) || month < 1 || month > 12) throw new RangeError('A lunar month must be a whole number 1–12');
+  if (secondEighth) {
+    if (month !== 8) throw new RangeError('Only เดือน 8 has a second month');
+    return 'เดือน 8 หลัง';
+  }
   return MONTH_NAME[month] ? `เดือน${MONTH_NAME[month]}` : `เดือน ${month}`;
 }
 
 /** Gregorian day (or Date, read as Thai time) → Thai lunar date. */
 export function toThaiLunar(input: Date | YMD): ThaiLunarDate {
-  const jdn = toJdn(toYmd(input));
-  // the lunar year starts in March–April of CE year cs + 638
-  let cs = toYmd(input).year - 638;
-  if (yearStartJdn(cs) > jdn) cs -= 1;
+  const ymd = toYmd(input);
+  const jdn = toJdn(ymd);
+  // The lunar year starts in March–April of CE year cs + 638, so January to March belong
+  // to the year before. Past MAX_CS that is the only year left to try.
+  let cs = ymd.year - 638;
+  if (cs > MAX_CS || (cs >= MIN_CS && yearStartJdn(cs) > jdn)) cs -= 1;
   let off = jdn - yearStartJdn(cs);
   for (const m of monthsOf(cs)) {
     if (off < m.days) {
@@ -162,12 +174,18 @@ export function toThaiLunar(input: Date | YMD): ThaiLunarDate {
     }
     off -= m.days;
   }
-  throw new Error('unreachable');
+  // Only after the last supported year has ended.
+  throw new RangeError(`Date is after the last supported lunar year (Chula Sakarat ${MAX_CS})`);
 }
 
 /** Thai lunar date → Gregorian day. */
-export function fromThaiLunar(d: { cs: number; month: number; secondEighth?: boolean; phase: 'waxing' | 'waning'; day: number }): YMD {
+/** What {@link fromThaiLunar} needs: a ThaiLunarDate's own fields, `secondEighth` optional. */
+export type ThaiLunarDateInput = Pick<ThaiLunarDate, 'cs' | 'month' | 'phase' | 'day'> & { secondEighth?: boolean };
+
+export function fromThaiLunar(d: ThaiLunarDateInput): YMD {
+  if (typeof d !== 'object' || d === null) throw new RangeError('A Thai lunar date must be an object');
   if (d.phase !== 'waxing' && d.phase !== 'waning') throw new RangeError("phase must be 'waxing' or 'waning'");
+  checkRange(d.cs);
   let off = 0;
   for (const m of monthsOf(d.cs)) {
     if (m.month === d.month && m.second === Boolean(d.secondEighth)) {
@@ -181,7 +199,7 @@ export function fromThaiLunar(d: { cs: number; month: number; secondEighth?: boo
 }
 
 /** ชวด (rat) … กุน (pig). */
-export const YEAR_ANIMALS_TH = ['ชวด', 'ฉลู', 'ขาล', 'เถาะ', 'มะโรง', 'มะเส็ง', 'มะเมีย', 'มะแม', 'วอก', 'ระกา', 'จอ', 'กุน'] as const;
+export const YEAR_ANIMALS_TH = Object.freeze(['ชวด', 'ฉลู', 'ขาล', 'เถาะ', 'มะโรง', 'มะเส็ง', 'มะเมีย', 'มะแม', 'วอก', 'ระกา', 'จอ', 'กุน'] as const);
 
 /**
  * Year animal (ปีนักษัตร) by the Thai lunar year: it changes at ขึ้น 1 ค่ำ เดือน 5,
